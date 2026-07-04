@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ellie: Neon Stage Experience</title>
+    <style>
+        /* --- GLOBAL SYNTHWAVE / RETRO NEON STYLES --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', 'Segoe UI', Helvetica, Arial, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #060112;
+            color: #ffffff;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- AMBIENT NEON PARTICLES --- */
+        #stage-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #neon-glow-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 3;
+            background: radial-gradient(circle at center, transparent 30%, rgba(6, 1, 18, 0.9) 80%);
+            box-shadow: inset 0 0 100px rgba(0, 242, 254, 0.15);
+        }
+
+        /* --- CONTINUOUS FLOATING TOP MUSIC PLAYER --- */
+        #music-control-panel {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            background: linear-gradient(135deg, rgba(255, 0, 128, 0.2), rgba(0, 242, 254, 0.2));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 2px solid #00f2fe;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.4), inset 0 0 10px rgba(0, 242, 254, 0.2);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #music-control-panel:hover {
+            box-shadow: 0 0 35px rgba(255, 0, 128, 0.8), inset 0 0 15px rgba(255, 0, 128, 0.4);
+            border-color: #ff0080;
+            transform: scale(1.06);
+        }
+
+        /* --- SYSTEM SCREEN CORE ARCHITECTURE --- */
+        .stage-deck {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(30px) scale(0.97);
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .stage-deck.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+        }
+
+        /* --- TYPOGRAPHY AND NEON TEXT EFFECTS --- */
+        .neon-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 10px #fff, 0 0 20px #ff0080, 0 0 40px #ff0080;
+            margin-bottom: 15px;
+            animation: textFlicker 4s infinite alternate;
+            width: 100%;
+            word-wrap: break-word;
+        }
+
+        @keyframes textFlicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+                text-shadow: 0 0 10px #fff, 0 0 20px #ff0080, 0 0 40px #ff0080;
+            }
+            20%, 22%, 24%, 55% {
+                text-shadow: none;
+                color: rgba(255, 255, 255, 0.3);
+            }
+        }
+
+        /* --- BACKSTAGE TICKET PASS LAYOUT --- */
+        .vip-ticket-stub {
+            background: linear-gradient(145deg, #12032b, #070114);
+            border: 3px dashed #ff0080;
+            padding: 35px 25px;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 25px rgba(255, 0, 128, 0.2);
+            max-width: 340px;
+            width: 100%;
+            margin-bottom: 35px;
+            position: relative;
+        }
+        .vip-ticket-stub::before, .vip-ticket-stub::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 24px;
+            height: 24px;
+            background: #060112;
+            border-radius: 50%;
+            transform: translateY(-50%);
+        }
+        .vip-ticket-stub::before { left: -15px; border-right: 3px solid #ff0080; }
+        .vip-ticket-stub::after { right: -15px; border-left: 3px solid #ff0080; }
+
+        /* --- ACTIONS AND CYBERPUNK BUTTONS --- */
+        .cyber-action-btn {
+            background: transparent;
+            border: 2px solid #00f2fe;
+            color: #00f2fe;
+            padding: 14px 40px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+            transition: all 0.3s ease;
+            max-width: 100%;
+        }
+        .cyber-action-btn:hover, .cyber-action-btn:active {
+            background: #00f2fe;
+            color: #060112;
+            box-shadow: 0 0 35px rgba(0, 242, 254, 0.7);
+        }
+
+        /* --- PREMIUM LIVE DANCE STREAM MONITOR --- */
+        .monitor-frame {
+            position: relative;
+            width: 280px;
+            height: 450px;
+            max-width: 100%;
+            max-height: 55vh; /* Prevents push-outs on short displays */
+            background: #000;
+            border-radius: 20px;
+            border: 4px solid #1f1235;
+            box-shadow: 0 0 0 2px #00f2fe, 0 15px 40px rgba(0,0,0,0.9);
+            overflow: hidden;
+            margin-bottom: 25px;
+            aspect-ratio: 9 / 16;
+        }
+
+        .monitor-video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* --- PASSPHRASE PLAY OVERLAY INTERFACE --- */
+        .video-overlay-btn {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(6, 1, 18, 0.85);
+            z-index: 4;
+            transition: opacity 0.4s ease;
+            padding: 15px;
+        }
+        
+        .play-icon-wrapper {
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 85px;
+            height: 85px;
+            border-radius: 50%;
+            background: rgba(0, 242, 254, 0.05);
+            border: 2px dashed #00f2fe;
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .play-icon {
+            font-size: 3rem;
+            color: #00f2fe;
+            text-shadow: 0 0 20px #00f2fe;
+            margin-left: 6px;
+        }
+        
+        .play-icon-wrapper:hover {
+            transform: scale(1.1);
+            border-color: #ff0080;
+            box-shadow: 0 0 30px rgba(255, 0, 128, 0.5);
+        }
+
+        /* --- INTEGRATED CYBER SECURITY FORM --- */
+        .system-gate-form {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding: 20px 15px;
+            background: linear-gradient(135deg, rgba(18, 5, 44, 0.98), rgba(7, 1, 20, 0.98));
+            border: 2px solid #ff0080;
+            border-radius: 12px;
+            box-shadow: 0 0 25px rgba(255, 0, 128, 0.4);
+            animation: formSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes formSlideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .gate-label {
+            color: #00f2fe;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .cyber-input-field {
+            width: 100%;
+            background: #060112;
+            border: 1px solid #00f2fe;
+            color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            outline: none;
+            margin-bottom: 8px;
+            font-size: 16px; /* Prevents iOS from zooming in unexpectedly */
+        }
+
+        .cyber-input-field:focus {
+            border-color: #ff0080;
+        }
+
+        .gate-error-output {
+            font-size: 0.7rem;
+            color: #ff0055;
+            font-weight: 700;
+            min-height: 18px;
+            margin-bottom: 8px;
+        }
+
+        .live-tag {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: #ff0080;
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 0.65rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px #ff0080;
+            z-index: 5;
+            animation: pulseBright 1.5s infinite;
+        }
+
+        @keyframes pulseBright {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* --- GRAPHIC STATISTICS MATRIX GRID --- */
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+            max-width: 340px;
+            margin-bottom: 30px;
+        }
+        .matrix-cell {
+            background: rgba(31, 18, 53, 0.4);
+            border: 1px solid rgba(0, 242, 254, 0.3);
+            padding: 15px 10px;
+            border-radius: 8px;
+        }
+        .matrix-val {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #ff0080;
+            margin-bottom: 3px;
+        }
+        .matrix-lbl {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #00f2fe;
+        }
+
+        /* --- THE GOLDEN RECORD SCRATCH CARD --- */
+        .vinyl-deck-container {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin-bottom: 30px;
+            background: #11052c;
+            border-radius: 50%;
+            border: 4px solid #ff0080;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .vinyl-hidden-badge {
+            text-align: center;
+            padding: 15px;
+            z-index: 1;
+        }
+
+        #scratch-surface-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        /* --- CINEMATIC SOUNDSTAGE CREDITS --- */
+        .production-credits-scroller {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+        .credits-crawl {
+            position: absolute;
+            top: 100%;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+        }
+        .stage-deck.active .credits-crawl {
+            animation: moveUpCrawl 22s linear forwards;
+        }
+        @keyframes moveUpCrawl {
+            0% { top: 100%; }
+            100% { top: -180%; }
+        }
+        .role-title {
+            font-size: 0.85rem;
+            color: #00f2fe;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 6px;
+        }
+        .role-holder {
+            font-size: 1.5rem;
+            color: #ffffff;
+            margin-bottom: 35px;
+            font-weight: 800;
+        }
+
+        .reboot-deck {
+            position: absolute;
+            bottom: 40px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .stage-deck.active .reboot-deck {
+            animation: revealReboot 1s ease forwards 19s;
+        }
+        @keyframes revealReboot {
+            to { opacity: 1; pointer-events: auto; }
+        }
+
+        #strobe-flash {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #00f2fe;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        #strobe-flash.triggered {
+            animation: strobeEffect 0.35s ease-out forwards;
+        }
+        @keyframes strobeEffect {
+            0% { opacity: 0; }
+            20% { opacity: 0.6; }
+            100% { opacity: 0; }
+        }
+
+        /* --- EXPLICIT PHONE HARDWARE OVERRIDES --- */
+        @media screen and (max-width: 480px) {
+            .neon-title { font-size: 2.2rem; }
+            .vip-ticket-stub { padding: 25px 15px; }
+            .monitor-frame { width: 240px; height: 385px; }
+            .play-icon-wrapper { width: 70px; height: 70px; }
+            .play-icon { font-size: 2.4rem; margin-left: 5px; }
+            .vinyl-deck-container { width: 220px; height: 220px; }
+            .role-holder { font-size: 1.25rem; margin-bottom: 25px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PERSISTENT BACKGROUND AUDIO COMPONENT -->
+    <audio id="bg-music" loop playsinline>
+        <source src="song.mp3" type="audio/mpeg">
+    </audio>
+    <div id="music-control-panel" onclick="togglePlaybackEngine()">🎵 ENGAGE SOUND</div>
+
+    <canvas id="stage-canvas"></canvas>
+    <div id="neon-glow-overlay"></div>
+    <div id="strobe-flash"></div>
+
+    <!-- MAIN ACCESS GATE -->
+    <section id="gate-deck" class="stage-deck active">
+        <div class="vip-ticket-stub">
+            <h2 style="font-size: 0.75rem; letter-spacing: 4px; color: #ff0080; text-transform: uppercase; margin-bottom: 10px;">Backstage Access Pass</h2>
+            <h1 class="neon-title" style="font-size: 2.5rem; margin-bottom: 5px;">Ellie</h1>
+            <div style="border-top: 1px dashed rgba(255,255,255,0.2); margin: 15px 0;"></div>
+            <p style="font-size: 0.85rem; line-height: 1.5; color: #bdafdf;">Unlock the premium immersive display celebrating the ultimate best friend.</p>
+        </div>
+        <button class="cyber-action-btn" onclick="shiftDeck('live-monitor-deck')">Drop the Beat ✦</button>
+    </section>
+
+    <!-- LIVE MONITOR SCREEN (VIDEO PREMIERE) -->
+    <section id="live-monitor-deck" class="stage-deck">
+        <div class="monitor-frame">
+            <span class="live-tag">LIVE STAGE</span>
+            
+            <!-- SECURE SYSTEM OVERLAY GATE (IN-MONITOR MODAL) -->
+            <div id="video-gate" class="video-overlay-btn">
+                
+                <!-- Initial State: Play trigger wrapper -->
+                <div id="play-btn-wrapper" class="play-icon-wrapper" onclick="revealSystemPassform()">
+                    <div class="play-icon">▶</div>
+                </div>
+
+                <!-- Upgraded State: Embedded Security Box -->
+                <div id="secure-pass-form" class="system-gate-form">
+                    <label class="gate-label" for="cyber-key">msichana mwenye akili?</label>
+                    <input type="password" id="cyber-key" class="cyber-input-field" placeholder="••••••••" autocomplete="off">
+                    <div id="gate-error" class="gate-error-output"></div>
+                    <button class="cyber-action-btn" onclick="verifySystemGate()" style="padding: 8px 20px; font-size: 0.75rem; letter-spacing: 2px;">Verify ✦</button>
+                </div>
+
+            </div>
+
+            <video id="dance-stream" class="monitor-video-feed" loop muted playsinline>
+                <source src="ellie_dancing.mp4" type="video/mp4">
+            </video>
+        </div>
+        <h2 class="neon-title" style="font-size: 1.8rem;">Vibe Unlocked!!</h2>
+        <p style="font-size: 0.95rem; color: #00f2fe; margin-bottom: 20px;">Incredible coordination. Absolute legend status.</p>
+        <button class="cyber-action-btn" onclick="shiftDeck('metrics-deck')">Analyze Metrics</button>
+    </section>
+
+    <!-- METRICS MATRIX BOARD -->
+    <section id="metrics-deck" class="stage-deck">
+        <h2 class="neon-title" style="font-size: 2rem; margin-bottom: 5px;">Performance Logs</h2>
+        <p style="font-size: 0.9rem; color: #bdafdf; margin-bottom: 20px;">Ellie's official performance data breakdown:</p>
+        
+        <div class="matrix-grid">
+            <div class="matrix-cell">
+                <div class="matrix-val">999%</div>
+                <div class="matrix-lbl">Energy Output</div>
+            </div>
+            <div class="matrix-cell">
+                <div class="matrix-val">Infinite</div>
+                <div class="matrix-lbl">Meme Potential</div>
+            </div>
+            <div class="matrix-cell">
+                <div class="matrix-val">Elite</div>
+                <div class="matrix-lbl">Humor Standard</div>
+            </div>
+            <div class="matrix-cell">
+                <div class="matrix-val">100%</div>
+                <div class="matrix-lbl">Best Friend Rating</div>
+            </div>
+        </div>
+        <button class="cyber-action-btn" onclick="shiftDeck('scratch-deck')">finyilia hapa</button>
+    </section>
+
+    <!-- GOLDEN VINYL RECORD SCRATCH REVEAL -->
+    <section id="scratch-deck" class="stage-deck">
+        <h2 class="neon-title" style="font-size: 2rem; margin-bottom: 5px;">Scratch scratch Hio circle</h2>
+        <p style="font-size: 0.85rem; color: #00f2fe; margin-bottom: 20px;"></p>
+        
+        <div class="vinyl-deck-container">
+            <div class="vinyl-hidden-badge">
+                <h3 style="color: #00f2fe; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px;">OFFICIAL RANKING</h3>
+                <h2 style="color: #fff; font-size: 1.3rem; font-weight: 900; text-shadow: 0 0 15px #ff0080;">DANCE ICON & LEGEND 🔒</h2>
+            </div>
+            <canvas id="scratch-surface-canvas"></canvas>
+        </div>
+        
+        <button class="cyber-action-btn" id="scratch-continue-action" onclick="shiftDeck('celebration-deck')" style="opacity: 0; pointer-events: none; transition: opacity 0.5s ease;">Unveil Core Vibe</button>
+    </section>
+
+    <!-- ULTRA FINALE CONCERT MAIN STAGE -->
+    <section id="celebration-deck" class="stage-deck">
+        <h1 class="neon-title" style="font-size: 3.5rem; margin-bottom: 5px;">CORE VIBE!</h1>
+        <p style="font-size: 1.1rem; color: #00f2fe; text-shadow: 0 0 10px rgba(0,242,254,0.5); font-weight: bold; margin-bottom: 30px;">Best Friend Ever. End of Conversation.</p>
+        <button class="cyber-action-btn" onclick="shiftDeck('credits-deck')">finyilia hapa🎬</button>
+    </section>
+
+    <!-- DYNAMIC SOUNDSTAGE RETRO CREDITS -->
+    <section id="credits-deck" class="stage-deck">
+        <div class="production-credits-scroller">
+            <div class="credits-crawl">
+                <h2 class="neon-title" style="font-size: 2rem; margin-bottom: 40px;">Show Log Production</h2>
+
+                <div class="role-title">Lead On-Stage Talent</div>
+                <div class="role-holder">Ellie</div>
+
+                <div class="role-title">Director of Core Chaos</div>
+                <div class="role-holder">Ellie</div>
+
+                <div class="role-title">Chief Vibe Auditor</div>
+                <div class="role-holder">Me</div>
+
+                <div class="role-title">Audio Integration</div>
+                <div class="role-holder">Continuous Laughter</div>
+
+                <div class="role-title">Special Authorization Acknowledgement</div>
+                <div class="role-holder" style="font-size: 0.95rem; line-height: 1.6; font-weight: 400; color: #bdafdf;">
+                    Dedicated to every single shared frame, video clip loop, and inside meme. The production continues infinitely.
+                </div>
+
+                <h1 class="neon-title" style="font-size: 2.5rem !important; margin-top: 30px;">Fin.</h1>
+            </div>
+        </div>
+        <div class="reboot-deck">
+            <button class="cyber-action-btn" onclick="shiftDeck('gate-deck')" style="border-color: #ff0080; color: #ff0080;">Restart Circuit ↺</button>
+        </div>
+    </section>
+
+    <script>
+        // --- SECURE CONTROL VARIABLES ---
+        let videoUnlocked = false;
+        let audioRunning = false;
+
+        // --- MULTI-TRACK PERSISTENT AUDIO PLAYER CONTROLS ---
+        function togglePlaybackEngine() {
+            const track = document.getElementById('bg-music');
+            const interfaceBtn = document.getElementById('music-control-panel');
+            if (audioRunning) {
+                track.pause();
+                interfaceBtn.innerText = "🎵 ENGAGE SOUND";
+                audioRunning = false;
+            } else {
+                track.play().catch(e => console.log("System deferment encountered."));
+                interfaceBtn.innerText = "⏸ MUTE SOUND";
+                audioRunning = true;
+            }
+        }
+
+        // --- STROBE REACTION ENGINE ---
+        function runStrobePulse() {
+            const frame = document.getElementById('strobe-flash');
+            frame.classList.remove('triggered');
+            void frame.offsetWidth; 
+            frame.classList.add('triggered');
+        }
+
+        // --- CUSTOM SYSTEM OVERLAY CONTROLS ---
+        function revealSystemPassform() {
+            document.getElementById('play-btn-wrapper').style.display = 'none';
+            const passForm = document.getElementById('secure-pass-form');
+            passForm.style.display = 'flex';
+            
+            const inputField = document.getElementById('cyber-key');
+            inputField.focus();
+
+            inputField.onkeydown = function(e) {
+                if (e.key === 'Enter') {
+                    verifySystemGate();
+                }
+            };
+        }
+
+        function verifySystemGate() {
+            const inputField = document.getElementById('cyber-key');
+            const errorArea = document.getElementById('gate-error');
+            const enteredValue = inputField.value.trim().toLowerCase();
+
+            if (enteredValue === 'sumaku') {
+                videoUnlocked = true;
+                
+                document.getElementById('video-gate').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('video-gate').style.display = 'none';
+                }, 400);
+
+                const player = document.getElementById('dance-stream');
+                player.play().catch(e => console.log('Playback error managed:', e));
+                runStrobePulse();
+            } else {
+                errorArea.innerText = "❌ ACCESS DENIED. TRY AGAIN! 😉";
+                inputField.value = "";
+                inputField.focus();
+                
+                setTimeout(() => {
+                    if(errorArea.innerText !== "") errorArea.innerText = "";
+                }, 3000);
+            }
+        }
+
+        // --- STAGE SWITCH MANAGER ---
+        function shiftDeck(targetDeckId) {
+            const player = document.getElementById('dance-stream');
+            if (player) player.pause();
+
+            document.querySelectorAll('.stage-deck').forEach(d => d.classList.remove('active'));
+            const targetDeck = document.getElementById(targetDeckId);
+            targetDeck.classList.add('active');
+            runStrobePulse();
+
+            if (targetDeckId === 'gate-deck') {
+                videoUnlocked = false;
+                document.getElementById('gate-error').innerText = "";
+                document.getElementById('cyber-key').value = "";
+                document.getElementById('secure-pass-form').style.display = 'none';
+                
+                const gateOverlay = document.getElementById('video-gate');
+                gateOverlay.style.display = 'flex';
+                gateOverlay.style.opacity = '1';
+                
+                document.getElementById('play-btn-wrapper').style.display = 'flex';
+            }
+
+            if (targetDeckId === 'scratch-deck') {
+                assembleScratchModule();
+            } else if (targetDeckId === 'celebration-deck') {
+                activateConcertFlares();
+            }
+        }
+
+        // --- MODERN LIQUID OVERLAY CANVASS SCRATCH ENGINE ---
+        function assembleScratchModule() {
+            const targetCanvas = document.getElementById('scratch-surface-canvas');
+            const paintContext = targetCanvas.getContext('2d');
+            const wrapperBox = targetCanvas.parentElement;
+            
+            targetCanvas.width = wrapperBox.offsetWidth;
+            targetCanvas.height = wrapperBox.offsetHeight;
+            
+            paintContext.fillStyle = '#200c43';
+            paintContext.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
+            
+            paintContext.strokeStyle = 'rgba(0, 242, 254, 0.25)';
+            paintContext.lineWidth = 3;
+            paintContext.beginPath();
+            paintContext.arc(targetCanvas.width / 2, targetCanvas.height / 2, 60, 0, Math.PI * 2);
+            paintContext.stroke();
+            
+            paintContext.fillStyle = '#00f2fe';
+            paintContext.font = 'bold 11px sans-serif';
+            paintContext.textAlign = 'center';
+            paintContext.fillText('FUTA FUTA HAPA', targetCanvas.width / 2, targetCanvas.height / 2 + 4);
+
+            let pointerDown = false;
+            let clearPoints = 0;
+            const unlockCeiling = 40; 
+
+            function clearOverlayStroke(e) {
+                if (!pointerDown) return;
+                e.preventDefault();
+                
+                const frameBoundaries = targetCanvas.getBoundingClientRect();
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                
+                const preciseX = clientX - frameBoundaries.left;
+                const preciseY = clientY - frameBoundaries.top;
+
+                paintContext.globalCompositeOperation = 'destination-out';
+                paintContext.beginPath();
+                paintContext.arc(preciseX, preciseY, 24, 0, Math.PI * 2);
+                paintContext.fill();
+
+                clearPoints++;
+                if (clearPoints > unlockCeiling) {
+                    const validationBtn = document.getElementById('scratch-continue-action');
+                    validationBtn.style.opacity = '1';
+                    validationBtn.style.pointerEvents = 'auto';
+                }
+            }
+
+            targetCanvas.addEventListener('mousedown', () => pointerDown = true);
+            targetCanvas.addEventListener('mousemove', clearOverlayStroke);
+            window.addEventListener('mouseup', () => pointerDown = false);
+            
+            targetCanvas.addEventListener('touchstart', (e) => { pointerDown = true; clearOverlayStroke(e); });
+            targetCanvas.addEventListener('touchmove', clearOverlayStroke);
+            window.addEventListener('touchend', () => pointerDown = false);
+        }
+
+        // --- ATMOSPHERIC FX DUST GENERATION CANVAS ENGINE ---
+        const visualCanvas = document.getElementById('stage-canvas');
+        const canvasRenderCtx = visualCanvas.getContext('2d');
+        let activeSparks = [];
+        let grandFinaleState = false;
+
+        function adaptScreenDimensions() {
+            visualCanvas.width = window.innerWidth;
+            visualCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', adaptScreenDimensions);
+        adaptScreenDimensions();
+
+        // Optimized touch movement particle tracker for mobile
+        const trackMovement = (clientX, clientY) => {
+            if(activeSparks.length > 60) return; // Cap mobile spark generation to maintain smooth 60fps
+            activeSparks.push({
+                x: clientX, 
+                y: clientY,
+                dimension: Math.random() * 2 + 1,
+                trajectoryX: (Math.random() - 0.5) * 1.2,
+                trajectoryY: (Math.random() - 0.5) * 1.2,
+                opacity: 1, 
+                fadeDelta: 0.03, 
+                mode: 'neonTrail',
+                hue: Math.random() > 0.5 ? '#00f2fe' : '#ff0080'
+            });
+        };
+
+        window.addEventListener('mousemove', (e) => trackMovement(e.clientX, e.clientY));
+        window.addEventListener('touchmove', (e) => {
+            if(e.touches.length > 0) trackMovement(e.touches[0].clientX, e.touches[0].clientY);
+        });
+
+        function generateSparklet(originX, originY, dynamicBurst = false) {
+            const structuralVibe = Math.random() > 0.85;
+            return {
+                x: originX,
+                y: originY,
+                dimension: structuralVibe ? (Math.random() * 8 + 3) : (Math.random() * 2 + 1),
+                trajectoryY: dynamicBurst ? (Math.random() * 5 - 2.5) : -(Math.random() * 0.6 + 0.2),
+                trajectoryX: dynamicBurst ? (Math.random() * 5 - 2.5) : (Math.random() * 0.6 - 0.3),
+                opacity: 1,
+                fadeDelta: dynamicBurst ? 0.02 : 0.006,
+                mode: structuralVibe ? 'glitchDiamond' : 'plasmaDot',
+                hue: Math.random() > 0.5 ? '#ff0080' : '#00f2fe'
+            };
+        }
+
+        function createConcertSignalRocket() {
+            const posX = Math.random() * visualCanvas.width;
+            const posY = visualCanvas.height;
+            const absoluteAlt = Math.random() * (visualCanvas.height * 0.5);
+            const arrayColors = ['#00f2fe', '#ff0080', '#ffffff'];
+            const targetHue = arrayColors[Math.floor(Math.random() * arrayColors.length)];
+            return { x: posX, y: posY, absoluteAlt, trajectoryY: -8, targetHue, mode: 'projectile' };
+        }
+
+        setInterval(() => {
+            if (!grandFinaleState && activeSparks.length < 60) {
+                activeSparks.push(generateSparklet(Math.random() * visualCanvas.width, visualCanvas.height + 15));
+            }
+        }, 200);
+
+        function activateConcertFlares() {
+            grandFinaleState = true;
+            activeSparks = [];
+            for (let i = 0; i < 4; i++) {
+                setTimeout(() => activeSparks.push(createConcertSignalRocket()), i * 300);
+            }
+            setInterval(() => {
+                if (grandFinaleState && activeSparks.length < 40) activeSparks.push(createConcertSignalRocket());
+            }, 800);
+        }
+
+        function operationalGraphicsLoop() {
+            canvasRenderCtx.clearRect(0, 0, visualCanvas.width, visualCanvas.height);
+
+            activeSparks.forEach((s, elementIdx) => {
+                s.x += s.trajectoryX || 0;
+                s.y += s.trajectoryY;
+                if (s.opacity !== undefined) s.opacity -= s.fadeDelta;
+                
+                canvasRenderCtx.save();
+                canvasRenderCtx.globalAlpha = Math.max(0, s.opacity !== undefined ? s.opacity : 1);
+
+                if (s.mode === 'glitchDiamond') {
+                    canvasRenderCtx.fillStyle = s.hue;
+                    canvasRenderCtx.font = `${s.dimension}px Arial`;
+                    canvasRenderCtx.fillText('✧', s.x, s.y);
+                }
+                else if (s.mode === 'plasmaDot' || s.mode === 'neonTrail' || s.mode === 'detonationDebris') {
+                    if (s.mode === 'detonationDebris') s.trajectoryY += 0.08; 
+                    canvasRenderCtx.fillStyle = s.hue;
+                    canvasRenderCtx.beginPath();
+                    canvasRenderCtx.arc(s.x, s.y, s.dimension || 2, 0, Math.PI * 2);
+                    canvasRenderCtx.fill();
+                }
+                else if (s.mode === 'projectile') {
+                    canvasRenderCtx.fillStyle = s.targetHue;
+                    canvasRenderCtx.fillRect(s.x, s.y, 2, 18);
+
+                    if (s.y <= s.absoluteAlt) {
+                        for (let j = 0; j < 40; j++) {
+                            activeSparks.push({
+                                x: s.x, y: s.y,
+                                trajectoryX: Math.random() * 6 - 3,
+                                trajectoryY: Math.random() * 6 - 3,
+                                opacity: 1, 
+                                hue: s.targetHue, 
+                                mode: 'detonationDebris',
+                                fadeDelta: 0.02,
+                                dimension: Math.random() * 2 + 1
+                            });
+                        }
+                        activeSparks.splice(elementIdx, 1);
+                    }
+                }
+                canvasRenderCtx.restore();
+                if (s.opacity <= 0) activeSparks.splice(elementIdx, 1);
+            });
+
+            requestAnimationFrame(operationalGraphicsLoop);
+        }
+        operationalGraphicsLoop();
+    </script>
+</body>
+</html>
